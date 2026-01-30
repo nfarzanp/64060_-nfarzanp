@@ -1,0 +1,45 @@
+---
+title: "Assignment 1"
+author: "Navid Farzanpay"
+date: "2026-01-29"
+output: html_document
+---
+## Dataset
+
+For this assignment I used the U.S. Department of Transportation Consumer Airfare Report, Table 2 (Top 1,000 City-Pair Markets). The dataset includes city-level aggregated market data such as passenger counts, average fares, yield, and distance.
+
+## Load data
+
+```{r}
+airfare <- read.csv("Consumer_Airfare_Report__Table_2_-_Top_1_000_City-Pair_Markets.csv")
+dim(airfare)
+```
+The dataset contains 8,509 observations and 16 variables, representing aggregated city-pair airfare market data.
+
+## Descriptive statistics
+
+```{r}
+summary(airfare$cur_fare)
+```
+
+This section summarizes the distribution of average airfare across 
+city-pair markets.
+
+## Categorical variable: City frequency
+
+```{r}
+table(airfare$city)
+```
+
+This table shows how frequently each city appears in the top 1,000 
+city-pair markets.
+
+## Histogram of average fares
+
+```{r}
+hist(airfare$cur_fare,
+     main = "Distribution of Average Airfares",
+     xlab = "Average Fare (USD)")
+```
+
+The histogram shows that most average fares fall within a central range, with fewer markets at very low or very high prices.
