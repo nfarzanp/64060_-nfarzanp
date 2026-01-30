@@ -43,3 +43,4 @@ hist(airfare$cur_fare,
 ```
 
 The histogram shows that most average fares fall within a central range, with fewer markets at very low or very high prices.
+
