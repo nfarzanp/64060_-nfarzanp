@@ -16,3 +16,4 @@ plot(airfare$distance, airfare$cur_fare)
 airfare$log_distance<-log(airfare$distance)
 #Scatterplot using transformed distance
 plot(airfare$log_distance,airfare$cur_fare)
+
