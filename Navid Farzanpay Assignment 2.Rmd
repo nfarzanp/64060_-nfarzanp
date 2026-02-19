@@ -1,0 +1,168 @@
+---
+title: "ML Assignment 2"
+author: "Navid Farzanpay"
+date: "2026-02-13"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+bank<-read.csv("UniversalBank-1.csv")
+dim(bank)
+names(bank)
+```
+```{r}
+bank<-bank[,!(names(bank)%in%c("ID","ZIP.Code"))]
+names(bank)
+```
+```{r}
+str(bank$Education)
+table(bank$Education)
+```
+```{r}
+bank$Education<-as.factor(bank$Education)
+library(caret)
+dummies<-dummyVars(Personal.Loan~.,data=bank)
+bank_dummy<-data.frame(predict(dummies,newdata=bank))
+names(bank_dummy)
+```
+```{r}
+y<-bank$Personal.Loan
+x<-bank_dummy
+table(y)
+```
+```{r}
+library(caret)
+set.seed(123)
+idx_train<-createDataPartition(y,p=0.60,list=FALSE)
+```
+
+```{r}
+x_train<-x[idx_train,]
+x_valid<-x[-idx_train,]
+y_train<-y[idx_train]
+y_valid<-y[-idx_train]
+dim(x_train)
+dim(x_valid)
+prop.table(table(y_train))
+prop.table(table(y_valid))
+```
+```{r}
+norm_model<-preProcess(x_train, method = "range")
+x_train_n<-predict(norm_model, x_train)
+x_valid_n<-predict(norm_model, x_valid)
+```
+```{r}
+ls()
+```
+```{r}
+new_customer<-data.frame(
+  Age=40,
+  Experience=10,
+  Income=84,
+  Family=2,
+  CCAvg=2,
+  Education.1=0,
+  Education.2=1,
+  Education.3=0,
+  Mortgage=0,
+  Securities.Account=0,
+  CD.Account=0,
+  Online=1,
+  CreditCard=1)
+new_customer_n<-predict(norm_model,new_customer)
+new_customer_n
+```
+```{r}
+library(class)
+pred_k1<-knn(
+  train = x_train_n,
+  test = new_customer_n,
+  cl=y_train,
+  k=1,
+  prob = TRUE
+)
+pred_k1
+```
+Question 1:
+Using k=1, the customer is classified as 0, meaning the loan is not accepted. Therefore, based on the nearest neighbor in the training data, the customer would not be predicted to accept the personal loan offer.
+```{r}
+library(class)
+k_values<-seq(1,51,by=2)
+val_acc<-numeric(length(k_values))
+for(i in seq_along(k_values)){
+  k<-k_values[i]
+  pred<-knn(train = x_train_n,test = x_valid_n,cl=y_train,k=k)
+  val_acc[i]<-mean(pred==y_valid)
+}
+best_k<-k_values[which.max(val_acc)]
+best_k
+max(val_acc)
+data.frame(k_values,val_acc)
+```
+Question 2:
+Although k=1 yields the highest validation accuracy (0.962), it's likely to overfit the training data.  more balanced choice is k=3, which achieves nearly the same validation accuracy (0.960) while reducing model variance. Therefore, k=3 provides a better balance between overfitting and ignoring predictor information.
+```{r}
+pred_k3<-knn(
+  train = x_train_n,
+  test = x_valid_n,
+  cl=y_train,
+  k=3
+)
+conf_matrix<-table(Predicted=pred_k3,Actual=y_valid)
+conf_matrix
+```
+Question 3:
+Using k=3, the confusion matric for the validation set shows 1792 true negatives, 128 true positives, 74 false negatives, and 6 false positives. The model correctly classifies the majority of customers, with strong performance in identifying both loan acceptances and non acceptances. The overall validation accuracy is 96%
+```{r}
+pred_best<-knn(
+  train = x_train_n,
+  test = new_customer_n,
+  cl=y_train,
+  k=3,
+  prob = TRUE
+)
+pred_best
+```
+Question 4:
+Using the selected value k=3, the customer is classified as 0. Therefore, based on the three nearest neighbors in the training data, this customer is predicted not to accept the personal loan offer.
+```{r}
+set.seed(123)
+idx_train2<-createDataPartition(y,p=0.50,list=FALSE)
+x_train2<-x[idx_train2,]
+y_train2<-y[idx_train2]
+x_remaining<-x[-idx_train2,]
+y_remaining<-y[-idx_train2]
+idx_valid2<-createDataPartition(y_remaining,p=0.60,list=FALSE)
+x_valid2<-x_remaining[idx_valid2,]
+y_valid2<-y_remaining[idx_valid2]
+x_test2<-x_remaining[-idx_valid2,]
+y_test2<-y_remaining[-idx_valid2]
+dim(x_train2)
+dim(x_valid2)
+dim(x_test2)
+```
+```{r}
+norm_model2<-preProcess(x_train2,method = "range")
+x_train2_n<-predict(norm_model2, x_train2)
+x_valid2_n<-predict(norm_model2, x_valid2)
+x_test2_n<-predict(norm_model2, x_test2)
+```
+```{r}
+pred_train2 <- knn(train = x_train2_n, test = x_train2_n, cl = y_train2, k = 3)
+pred_valid2 <- knn(train = x_train2_n, test = x_valid2_n, cl = y_train2, k = 3)
+pred_test2  <- knn(train = x_train2_n, test = x_test2_n,  cl = y_train2, k = 3)
+
+cm_train2 <- table(Predicted = pred_train2, Actual = y_train2)
+cm_valid2 <- table(Predicted = pred_valid2, Actual = y_valid2)
+cm_test2  <- table(Predicted = pred_test2,  Actual = y_test2)
+
+cm_train2
+cm_valid2
+cm_test2
+```
+Question 5:
+Using k=3 with a 50% training, 30% validation, and 20% test split, the training accuracy is approximately 97.4%, while the validation and test accuracies are approximately 95.7% and 95.9%, respectively. The training accuracy is slightly higher because the model is evaluated on data it was trained on. However, the validation and test accuracies are very similar, indicating that the model generalizes well to unseen data and does not appear to be overfitting. The small differences across the three sets are expected due to sampling variability and the bias variance trade off.
