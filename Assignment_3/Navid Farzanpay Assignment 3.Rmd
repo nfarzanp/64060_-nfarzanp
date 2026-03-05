@@ -1,0 +1,106 @@
+---
+title: "Assignment 3 - Navid Farzanpay"
+author: "Navid Farzanpay"
+date: "2026-02-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+```{r}
+library(caret)
+library(e1071)
+bank<-read.csv("UniversalBank-1.csv")
+```
+## Prepare data
+```{r}
+bank_small<-bank[,c("Personal.Loan","Online","CreditCard")]
+bank_small$Personal.Loan<-factor(bank_small$Personal.Loan)
+bank_small$Online<-factor(bank_small$Online)
+bank_small$CreditCard<-factor(bank_small$CreditCard)
+```
+## Partition into training and validation sets
+```{r}
+set.seed(123)
+idx_train<-createDataPartition(bank_small$Personal.Loan,p=0.60,list = FALSE)
+train_df<-bank_small[idx_train,]
+valid_df<-bank_small[-idx_train,]
+```
+## Part A
+```{r}
+pivot_A<-table(CC=train_df$CreditCard, Loan=train_df$Personal.Loan, Online=train_df$Online)
+pivot_A
+```
+## Part B
+```{r}
+prob_pivot<-51/(467+51)
+prob_pivot
+```
+### Answer to part B
+The probability that a customer with CC=1 and Online=1 accepts the loan is 9.85%
+
+## Part C
+```{r}
+#Loan as a function of online
+pivot_online<-table(Loan=train_df$Personal.Loan, Online=train_df$Online)
+pivot_online
+#Loan as a function of credit card
+pivot_cc<-table(Loan=train_df$Personal.Loan, CC=train_df$CreditCard)
+pivot_cc
+```
+## Part D
+```{r}
+# Totals
+total_loan1<-sum(train_df$Personal.Loan==1)
+total_loan0<-sum(train_df$Personal.Loan==0)
+total_n<-nrow(train_df)
+# i
+p_cc1_given_loan1<-sum(train_df$CreditCard==1&train_df$Personal.Loan==1)/total_loan1
+# ii
+p_online1_given_loan1<-sum(train_df$Online==1&train_df$Personal.Loan==1)/total_loan1
+# iii
+p_loan1<-total_loan1/total_n
+# iv
+p_cc1_given_loan0<-sum(train_df$CreditCard==1&train_df$Personal.Loan==0)/total_loan0
+# v
+p_online1_given_loan0<-sum(train_df$Online==1&train_df$Personal.Loan== 0)/total_loan0
+# vi
+p_loan0<-total_loan0/total_n
+p_cc1_given_loan1
+p_online1_given_loan1
+p_loan1
+p_cc1_given_loan0
+p_online1_given_loan0
+p_loan0
+```
+## Part E
+```{r}
+#Numerator for loan=1
+num_loan1<-p_cc1_given_loan1*p_online1_given_loan1*p_loan1
+# Numerator for loan=0
+num_loan0<-p_cc1_given_loan0*p_online1_given_loan0*p_loan0
+# Naive Bayes probability
+prob_nb<-num_loan1/(num_loan1+num_loan0)
+prob_nb
+```
+### The naive bayes estimate is P(loan=1|cc=1,online=1)=0.1001 (about 10.01%)
+## Part F
+From the pivot table, the probability is 9.85%
+From the naive bayes calculation, the probabilty is 10.01%
+The pivot table value is more accurate because it is based directly on the actual counts in the training data, while the naive bayes value is slightly different because it assumes that online and creditcard are independent given loan
+
+## Part G
+```{r}
+#Fit naive bayes model
+nb_model<-naiveBayes(Personal.Loan~CreditCard+Online,data=train_df)
+nb_model
+```
+```{r}
+# Create a new customer with cc=1 and online=1
+new_customer<-data.frame(CreditCard=factor(1,levels=levels(train_df$CreditCard)),
+                         Online=factor(1,levels = levels(train_df$Online)))
+#Get predicted probabilities
+predict(nb_model,new_customer,type="raw")
+```
+The naive bayes model gives a probability of 10.01% for loan=1 when cc=1 and online=1. This matches the value computed manually in Part E, confirming that the manual naive bayes calculation was correct.
