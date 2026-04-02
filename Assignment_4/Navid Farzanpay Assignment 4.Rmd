@@ -1,0 +1,72 @@
+---
+title: "Assignment 4"
+author: "Navid Farzanpay"
+date: "2026-03-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+```{r}
+pharma<-read.csv("Pharmaceuticals-1.csv")
+```
+
+### Part a: Cluster analysis setup and method
+
+```{r}
+pharma_clust<-pharma[,c("Market_Cap","Beta","PE_Ratio","ROE","ROA","Asset_Turnover",
+                        "Leverage","Rev_Growth","Net_Profit_Margin")]
+```
+```{r}
+pharma_scaled<-scale(pharma_clust)
+```
+```{r}
+set.seed(123)
+wss<-numeric(10)
+for(k in 1:10){
+  kmeans_model<-kmeans(pharma_scaled,centers=k,nstart=25)
+  wss[k]<-kmeans_model$tot.withinss}
+plot(1:10,wss,type="b",xlab="Number of Clusters",ylab="Within Cluster Sum of Squares")
+```
+```{r}
+set.seed(123)
+kmeans_final<-kmeans(pharma_scaled,centers=3,nstart=25)
+```
+The k means clustering algorithm was used to group the firms based on the nine numerical variables specified in the assignment. Only variables 1 through 9 were included in the clustering process. The variables were standardized prior to clustering because they are measured on different scales, and k means relies on distance calculations. This ensures that no single variable disproportionately influences the results. The number of clusters was selected using the elbow method by evaluating the within-cluster sum of squares for values of k from 1 to 10. Based on the plot, k=3 was chosen as it represents a clear point where additional clusters provide diminishing improvements. All variables were given equal weight, and the kmeans algorithm was run with multiple starting points to ensure a stable solution.
+
+### Part b: Interpretation of clusters
+
+```{r}
+pharma$cluster<-kmeans_final$cluster
+```
+```{r}
+aggregate(pharma_clust,by=list(cluster=pharma$cluster),mean)
+```
+The clustering results show clear differences across three groups of firms based on their financial characteristics.
+
+Cluster 1 consists of firms with moderate market capitalization, relatively high price to earnings ratios, and lower profitability measures such as return on equity and return on assets. These firms also show moderate growth and profit margins.
+
+Cluster 2 includes firms with the largest market capitalization and the strongest financial performance. These firms have high return on equity, high return on assets, and the highest net profit margins, indicating well established and highly profitable companies.
+
+Cluster 3 consists of smaller firms with lower market capitalization but higher leverage and higher estimated revenue growth. These firms appear to be more growth-oriented but also carry higher financial risk compared to the other cluster.
+
+### Part c: Patterns in variables not used for clustering
+
+```{r}
+pharma_clean<-read.csv("Pharmaceuticals-1.csv")
+pharma_clean$cluster<-kmeans_final$cluster
+pharma_clean$Median_Recommendation<-as.numeric(as.factor(pharma_clean$Median_Recommendation))
+aggregate(pharma_clean$Median_Recommendation,by=list(cluster=pharma_clean$cluster),mean)
+table(pharma_clean$cluster,pharma_clean$Location)
+table(pharma_clean$cluster,pharma_clean$Exchange)
+```
+The clusters show some differences in the variables not used to form the clusters. Cluster 2 has the lowest average median recommendation, while Clusters 1 and 3 are slightly higher. In terms of location, most firms in all clusters are headquartered in the US, although clusters 1 and 3 include more international representation. With respect to exchange, clusters 1 and 2 are entirely listed on the NYSE, while cluster 3 includes firms listed on AMEX and NASDAQ in addition to the NYSE.
+
+### Part d: Cluster names
+
+Cluster 1 represents moderate size firms with relatively high price to earnigns ratios but lower profitability and moderate growth.
+
+Cluster 2 represents large firms with strong financial performance, including high return on equity, high return on assets, and high profit margins.
+
+Cluster 3 represents smaller firms with higher revenue growth and higher leverage, indicating a more growth oriented but riskier profile.
