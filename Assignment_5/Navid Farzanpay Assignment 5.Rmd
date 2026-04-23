@@ -1,0 +1,112 @@
+---
+title: "Assignment 5"
+author: "Navid Farzanpay"
+date: "2026-04-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+```{r}
+cereals<-read.csv("Cereals-1.csv")
+```
+
+## Datapreprocessing
+
+```{r}
+clean_cereals<-na.omit(cereals)
+dim(cereals)
+dim(clean_cereals)
+```
+The dataset cereals contains nutritional information, store display variables, and consumer ratings for the 77 breakfast cereals. Cereals with missing values were removed prior to the analysis, reducing the dataset from 77 to 74 observations.
+
+## Hierarchial Clustering Using Agnes
+
+```{r}
+library(cluster)
+cereals_numeric<-clean_cereals[,sapply(clean_cereals,is.numeric)]
+cereals_scaled<-scale(cereals_numeric)
+```
+```{r}
+agnes_single<-agnes(cereals_scaled,method = "single")
+agnes_complete<-agnes(cereals_scaled,method = "complete")
+agnes_average<-agnes(cereals_scaled,method = "average")
+agnes_ward<-agnes(cereals_scaled,method = "ward")
+```
+```{r}
+agnes_single$ac
+agnes_complete$ac
+agnes_average$ac
+agnes_ward$ac
+```
+Hierarchial clustering was performed using euclidean distance on normalized measurements. The agnes algorithm was applied using single, complete, average, and ward linkage methods. The agglomerative coefficients were compared to determine the method that produce4d the strongest clustering structure.
+
+## Determination of the Number of Clusters
+
+```{r}
+ward_dendrogram<-agnes(cereals_scaled,method = "ward")
+plot(as.hclust(ward_dendrogram),main = "Dendrogram Using Ward's Method",cex=0.6)
+rect.hclust(as.hclust(ward_dendrogram),k=3,border="red")
+```
+Created a dendrogream using ward method to determine the optimal number of clusters. There is a three cluster solution that provides the clearest seperation. Therefore, three clusters were selected for further analysis.
+
+## Cluster Assignments Using Ward Method
+
+```{r}
+hc_ward<-as.hclust(ward_dendrogram)
+clean_cereals$cluster<-cutree(hc_ward,k=3)
+table(clean_cereals$cluster)
+```
+Each cereal was assigned to one of the three clusters using the ward hiearchial clustering. The resulting cluster sizes were 23, 21, and 30 cereals as shown above.
+
+## Interpretation of Clusters
+
+```{r}
+aggregate(cereals_numeric,by=list(cluster=clean_cereals$cluster),mean)
+```
+The clusters exhibit distinct nutritional consumer characteristics. Cluster 1 contains cereals with higher fiber, protein, and potassium, along with moderate sugar levels. Cluster 2 consists of cereals with the highest sugar and the lowest fiber and protien. Cluster 3 includes cereals with lower calories, fat, and sugar, indicating comparatively healthier nutritoinal profiles. These differences confirm meaningful segemntation among the cereals and support the validity of the hierarchial clustering results.
+
+## Cluster Structure and Stability Analysis
+
+```{r}
+set.seed(123)
+index_A<-sample(1:nrow(cereals_scaled),size=floor(0.5*nrow(cereals_scaled)))
+A<-cereals_scaled[index_A,]
+B<-cereals_scaled[-index_A,]
+```
+```{r}
+nrow(A)
+nrow(B)
+```
+to evaluate cluster stability, the normalized dataset was randomly partitoined into two equal subsets. Partition A was used to form clusters, and partition B was used to assess how well the clustering solution generalized to new observations
+
+```{r}
+ward_A<-agnes(A,method="ward")
+hc_A<-as.hclust(ward_A)
+clusters_A<-cutree(hc_A,k=3)
+```
+```{r}
+centroids_A<-aggregate(A,by=list(cluster=clusters_A),mean)
+centroids_A<-as.matrix(centroids_A[,-1])
+dist_matrix<-as.matrix(dist(rbind(centroids_A,B)))
+dist_to_centroids<-dist_matrix[1:nrow(centroids_A),(nrow(centroids_A)+1):nrow(dist_matrix)]
+clusters_B<-apply(dist_to_centroids, 2, which.min)
+```
+```{r}
+full_clusters_B<-clean_cereals$cluster[-index_A]
+table(clusters_B,full_clusters_B)
+```
+To evaluate cluster stability, the normalized dataset was randomly partitoined into two equal subsets. Partition A was clusterd using ward hierarchial clustering method, and the resulting centroids were used to assign observations in partition B to the nearest cluster. The assignments were then compared with those obtained from the full dataset. The results indicate a moderate level of consistency, with appx 70% agreement between the two solutions. This suggests that the clustering structure is reasonably stable and reliable.
+
+## Identifcation of Healthy Cereals
+
+```{r}
+healthy_cereals<-clean_cereals[clean_cereals$cluster==3,]
+healthy_cereals
+```
+Based on the cluster averages, cluster 3 represents the healthiest group. This cluster is categorized by the lowers sugar, fat, and calorie levels, along with balanced nutritional values. Therefore, cereals within cluster 3 are recommended for school cafeterias.
+
+## Normalization and Its Role in Cluster Analysis
+
+Normalization was necessary when performing hierchial clustering because the nuttional variables were measured on different scales. Standardizing the data ensured that no single variable disproportionately influsenced the euclidean distance calcuations, resulting in a balanced and meaningful clustering solutoin. However, normalization was not required when identifying the cluster of healthy cereals. The original unscaled values were used for interpretation, as they preserve the true nutrtional magnitudes and allow for practical comparisons based on dietary considerations. Therefore, normalized data was used to form the clusters, while the original data was used to evaluate and identify healthy cereal options.
