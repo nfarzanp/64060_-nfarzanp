@@ -1,0 +1,117 @@
+---
+title: "Identifying High-Potential Routes for Low-Cost and Ultra-Low-Cost Airline
+  Expansion"
+author: "Navid Farzanpay"
+date: "2026-04-18"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
+```
+
+# Executive Summary
+
+This study analyzes U.S. airport-pair markets to identify potential opportunities for low-cost and ultra-low-cost airline expansion. Using real-world data from the U.S. Department of Transportation, clustering techniques were applied to group similar markets based on distance, demand, fares, and market structure.
+
+The results indicate that medium-distance routes with strong passenger demand, relatively high fares, and limited low-cost carrier presence represent the most attractive opportunities. Additional opportunities were also identified in leisure-oriented markets and routes where competitive entry may still be viable.
+
+Overall, the analysis provides a data-driven approach to identifying potential expansion markets and supports strategic decision-making in airline network planning.
+
+# Introduction
+
+This study analyzes U.S. airport pair markets using  data from the U.S. Department of Transportation’s Bureau of Transportation Statistics. The goal is to identify routes that could be good opportunities for low-cost and ultra-low-cost airline expansion.
+
+Low-cost carriers (LCCs) and ultra-low-cost carriers (ULCCs) focus on markets where demand is strong, distances are reasonable, and fares are still relatively high. These opportunities often exist in routes that are currently dominated by legacy carriers (such as American, Delta, and United), where there is limited pricing competition.
+
+In this analysis, clustering techniques are used to group similar airline markets based on distance, passenger demand, fares, and market share. By comparing these groups to existing LCC and ULCC markets, it becomes possible to identify routes that may be strong candidates for expansion.
+
+The results of this analysis provide a data-driven way to highlight potential markets and support decision-making for airline route planning.
+
+# Data Description
+
+This study uses the Consumer Airfare Report (Table 1a – All U.S. Airport Pair Markets) dataset from the U.S. Department of Transportation’s Bureau of Transportation Statistics and represents real world airline market data . The dataset contains information on passenger demand, airfare levels, route distance, and airline market share for airport pair markets across the United States.
+
+The analysis focuses on data from 2024 and 2025 and includes airport-pair markets across the United States. Several key variables are used in the analysis, including route distance (nsmiles), number of passengers (passengers), average fare (fare), market share of the largest carrier (large_ms), and market share of the lowest-fare carrier (lf_ms).
+
+For the purpose of this study, airlines are grouped into three main categories. Legacy carriers include full-service airlines such as American Airlines (AA), Delta Air Lines (DL), United Airlines (UA), Alaska Airlines (AS), and Hawaiian Airlines (HA), which operate large hub-and-spoke networks and offer multiple service levels. Low-cost carriers (LCCs) include airlines such as Southwest (WN), JetBlue (B6), Sun Country (SY), Breeze (MX), and Avelo (XP/X4), which operate with simplified cost structures and generally offer lower fares. Ultra-low-cost carriers (ULCCs) include Spirit (NK), Frontier (F9), and Allegiant (G4), which offer the lowest base fares by charging separately for additional services.
+
+Regional and niche carriers, such as Cape Air (9K), Southern Airways Express (9X), Silver Airways (3M), Advanced Air (AN), Tradewind Aviation (TJ), and JSX (XE), are excluded from the analysis because they operate in specialized or limited markets that are not directly comparable to large-scale airline network strategies.
+
+# Methodology
+
+This analysis applies clustering techniques to identify groups of similar airline markets based on key characteristics such as distance, passenger demand, fares, and market share. Because the objective is to explore patterns in the data rather than predict a specific outcome, an unsupervised learning approach is used.
+
+The primary method used is k-means clustering, which groups observations into a predefined number of clusters based on similarity. In addition, hierarchical clustering is used to support and validate the structure of the clusters. Both methods rely on distance measures to group similar markets together.
+
+Before applying clustering, the data is filtered, cleaned, and normalized to ensure that variables are on a comparable scale and do not disproportionately influence the results.
+
+# Results and Analysis
+
+The elbow method is used to determine the optimal number of clusters.
+
+```{r}
+library(tidyverse)
+airfare<-read.csv("Consumer_Airfare_Report__Table_1a_-_All_U.S._Airport_Pair_Markets.csv")
+airfare_24_25<-airfare%>%
+  filter(Year%in%c(2024, 2025))
+```
+```{r}
+excluded<-c("9K","9X","3M","AN","TJ","XE")
+airfare_clean<-airfare_24_25%>%
+  filter(!carrier_lg%in%excluded,!carrier_low%in%excluded)%>%
+  select(airport_1,airport_2,nsmiles,passengers,fare,large_ms,lf_ms)%>%
+  drop_na()
+```
+```{r}
+airfare_scaled<-scale(airfare_clean%>%select(nsmiles,passengers,fare,large_ms,lf_ms))
+set.seed(123)
+wss<-numeric(10)
+for(i in 1:10){
+  kmeans_model<-kmeans(airfare_scaled,centers=i,nstart=10)
+  wss[i]<-kmeans_model$tot.withinss}
+plot(1:10,wss,type="b",xlab="Number of Clusters",ylab="Within Sum of Squares")
+set.seed(123)
+kmeans_final<-kmeans(airfare_scaled,centers=4,nstart=25)
+airfare_clean$cluster<-kmeans_final$cluster
+```
+```{r}
+aggregate(airfare_clean[,3:7],by=list(cluster=airfare_clean$cluster),mean)
+```
+The clustering results group airline markets into four distinct segments based on distance, passenger demand, airfare levels, and market share .
+
+Cluster 1 represents mid-distance routes with moderate demand and relatively moderate fares along with some levle of competition. These markets are somewhat balanced and may offer limited opportunity for new LCC entry.
+
+Cluster 2 consists of long-distance routes with higher fares and lower demand. While these markets show highrr pricing, the longer distances may make them less ideal for LCC operations.
+
+Cluster 3 includes mid to long distance routes with very strong passenger demand, relatively high fares, and moderate market concentration. These markets also show limited presence from low-cost carriers. As a result, this cluster presents the strongest opportunities for LCC and ULCC expansion.
+
+Cluster 4 represents shorter distance routes with low demand and very high market concentration. These markets are likely dominated by a single carrier and may not support additional competition.
+
+## The following table shows example routes from the most attractive cluster identified in the analysis
+
+```{r}
+cluster_routes<-airfare_clean%>%
+  filter(cluster==3,
+         large_ms>0.6,
+         lf_ms<0.4)%>%
+  arrange(desc(passengers),desc(fare))%>%
+  distinct(airport_1,airport_2,.keep_all=TRUE)%>%
+  select(airport_1,airport_2,nsmiles,passengers,fare,large_ms,lf_ms)%>%
+  head(20)
+cluster_routes
+```
+Example routes within this cluster include EWR–SFO, BOS–RSW, and SAN–SEA. These routes demonstrate strong passenger demand, relatively high fares, and moderate to high market concentration, while showing limited presence from low-cost carriers.
+
+Additional routes such as MCO–BWI and LAX–EWR also exhibit characteristics consistent with potential opportunity. MCO–BWI reflects a typical leisure market that aligns well with LCC/ ULCC strategies, while LAX–EWR suggests that even higher-demand markets with existing competition may still support additional entry under the right conditions.
+
+# Conclusion
+This analysis used clustering techniques to identify groups of similar airline markets based on distance, passenger demand, fares, and market share. The results highlight that certain routes with strong demand and elevated fares, particularly those with high market concentration and limited LCC presence, represent the most attractive opportunities for low-cost and ULCC expansion.
+
+The findings also show that opportunities are not limited to a single type of market. While some routes reflect strong pricing power and legacy carrier dominance, others represent leisure-oriented markets or routes where additional competition may still be viable even in the presence of existing LCCs.
+
+Overall, this analysis provides a data-driven approach to identifying potential expansion markets and supports more informed decision-making in airline network planning and competitive strategy. Future analysis could further explore lower-demand or niche markets with additional operational data to better capture the full range of opportunities available to ULCCs.
+
+## References
+
+U.S. Department of Transportation, Bureau of Transportation Statistics. Consumer Airfare Report (Table 1a – All U.S. Airport Pair Markets). https://catalog.data.gov/dataset/consumer-airfare-report-table-1a-all-u-s-airport-pair-markets
